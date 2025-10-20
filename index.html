@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Voice Translator</title>
+  <title>Voice Chatbot</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -36,52 +36,24 @@
   </style>
 </head>
 <body>
-  <h2>🌍 Voice Translator</h2>
-  <p>Select languages and start speaking</p>
+  <h2>🤖 Voice Chatbot</h2>
+  <p>Start speaking or type your message</p>
 
   <div>
-    <label>From:</label>
-    <select id="sourceLang"></select>
-    <label>To:</label>
-    <select id="targetLang"></select>
+    <button id="speakBtn">🎤 Start Speaking</button>
   </div>
 
-  <button id="speakBtn">🎤 Start Speaking</button>
-  <textarea id="inputText" placeholder="Detected speech will appear here..."></textarea>
-  <button id="translateBtn">Translate</button>
-  <textarea id="outputText" placeholder="Translation will appear here..."></textarea>
+  <textarea id="inputText" placeholder="Detected speech or type your message here..."></textarea>
+  <button id="chatBtn">Send</button>
+  <textarea id="outputText" placeholder="Chatbot response will appear here..."></textarea>
 
   <script>
-    const sourceLangSelect = document.getElementById("sourceLang");
-    const targetLangSelect = document.getElementById("targetLang");
     const speakBtn = document.getElementById("speakBtn");
+    const chatBtn = document.getElementById("chatBtn");
     const inputText = document.getElementById("inputText");
     const outputText = document.getElementById("outputText");
 
-    // Tüm desteklenen diller
-    const languages = {
-      ar: "Arabic", zh: "Chinese", en: "English", fr: "French", de: "German",
-      hi: "Hindi", it: "Italian", ja: "Japanese", ko: "Korean",
-      pl: "Polish", pt: "Portuguese", ru: "Russian", es: "Spanish",
-      tr: "Turkish", th: "Thai", uk: "Ukrainian", vi: "Vietnamese"
-    };
-
-    for (const [code, name] of Object.entries(languages)) {
-      const opt1 = document.createElement("option");
-      opt1.value = code;
-      opt1.textContent = name;
-      sourceLangSelect.appendChild(opt1);
-
-      const opt2 = document.createElement("option");
-      opt2.value = code;
-      opt2.textContent = name;
-      targetLangSelect.appendChild(opt2);
-    }
-
-    sourceLangSelect.value = "en";
-    targetLangSelect.value = "tr";
-
-    // Ses tanıma (Speech-to-Text)
+    // Speech Recognition
     let recognition = null;
     if ("webkitSpeechRecognition" in window) {
       recognition = new webkitSpeechRecognition();
@@ -93,7 +65,7 @@
 
     speakBtn.addEventListener("click", () => {
       if (!recognition) return alert("Speech recognition not supported.");
-      recognition.lang = sourceLangSelect.value;
+      recognition.lang = "en-US";
       recognition.start();
     });
 
@@ -101,24 +73,27 @@
       inputText.value = event.results[0][0].transcript;
     };
 
-    // LibreTranslate API
-    document.getElementById("translateBtn").addEventListener("click", async () => {
+    // Cloudflare Worker ChatGPT
+    chatBtn.addEventListener("click", async () => {
       const text = inputText.value;
-      const source = sourceLangSelect.value;
-      const target = targetLangSelect.value;
-
       if (!text.trim()) return;
-      outputText.value = "Translating...";
+      outputText.value = "Waiting for response...";
 
       try {
-        const res = await fetch("https://libretranslate.com/translate", {
+        const res = await fetch("https://mandarinopenai.furkan285saglam.workers.dev/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ q: text, source, target, format: "text" })
+          body: JSON.stringify({
+            messages: [
+              { role: "system", content: "You are a helpful and friendly chatbot." },
+              { role: "user", content: text }
+            ]
+          })
         });
 
         const data = await res.json();
-        outputText.value = data.translatedText;
+        const reply = data.choices?.[0]?.message?.content || "No response";
+        outputText.value = reply;
       } catch (err) {
         outputText.value = "Error: " + err.message;
       }
